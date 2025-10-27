@@ -44,7 +44,6 @@
     max-width: 800px;
   }
   
-  /* Jumble Container - Positioned at Top */
   #jumbleContainer {
     display: none;
     width: 100%;
@@ -122,7 +121,6 @@
     text-align: center;
   }
   
-  /* Sentence Box */
   #sentenceBox {
     border: 3px solid #6ab04c;
     background: #d4efdf;
@@ -152,7 +150,6 @@
     display: none;
   }
   
-  /* Spoken Sentence Box */
   #spokenSentenceBox {
     border: 3px solid #3498db;
     background: #d6eaf8;
@@ -210,7 +207,6 @@
     opacity: 0.6;
   }
   
-  /* Correct Sentence Display */
   #correctSentenceBox {
     border: 3px solid #27ae60;
     background: #d5f4e6;
@@ -239,7 +235,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
   
-  /* Buttons */
   #buttons {
     display: flex;
     flex-wrap: wrap;
@@ -293,7 +288,6 @@
     background: #2980b9;
   }
   
-  /* Result/Feedback */
   #result {
     font-size: 20px;
     font-weight: 700;
@@ -303,7 +297,6 @@
     text-align: center;
   }
   
-  /* Browser Support Notice */
   #supportNotice {
     background: #fff3cd;
     border: 2px solid #ffc107;
@@ -322,7 +315,6 @@
     display: block;
   }
   
-  /* Score Page */
   #scorePageContainer {
     display: none;
     text-align: center;
@@ -359,7 +351,6 @@
     margin: 20px 0;
   }
   
-  /* Responsive Design */
   @media (max-width: 768px) {
     h1 {
       font-size: 24px;
@@ -390,7 +381,6 @@
   <div id="supportNotice"></div>
   <div id="levelDisplay"></div>
 
-  <!-- Jumble Container at Top -->
   <div id="jumbleContainer">
     <div id="instructions">👆 Click on words to arrange them in the correct order!</div>
     <div class="container-label">Jumbled Words:</div>
@@ -400,10 +390,8 @@
     <div id="jumbleTimer"></div>
   </div>
 
-  <!-- Sentence Display -->
   <div id="sentenceBox"></div>
 
-  <!-- Spoken Sentence with Playback -->
   <div id="spokenSentenceBox">
     <div>You said: <strong id="spokenText"></strong></div>
     <div id="playbackContainer">
@@ -411,13 +399,11 @@
     </div>
   </div>
 
-  <!-- Correct Sentence Display -->
   <div id="correctSentenceBox">
     <div>✅ Correct Sentence:</div>
     <strong id="correctSentenceText"></strong>
   </div>
 
-  <!-- Score Page -->
   <div id="scorePageContainer">
     <div class="score-title">🎉 Level Complete!</div>
     <div class="score-content" id="levelScoreContent"></div>
@@ -425,7 +411,6 @@
     <button id="restartBtn">Restart</button>
   </div>
 
-  <!-- Control Buttons -->
   <div id="buttons">
     <button id="repeatBtn">🔊 Repeat Sentence</button>
     <button id="speakBtn">🎤 Speak</button>
@@ -435,13 +420,12 @@
     <button id="nextSentenceBtn">➡️ Next Question</button>
   </div>
 
-  <!-- Feedback -->
   <div id="result"></div>
 </div>
 
 <script>
 // ============================================
-// DEVICE DETECTION & BROWSER CHECK
+// DEVICE DETECTION
 // ============================================
 function detectDevice() {
   const ua = navigator.userAgent;
@@ -454,34 +438,33 @@ function detectDevice() {
   };
 }
 
+// ============================================
+// BROWSER SUPPORT CHECK
+// ============================================
 function checkBrowserSupport() {
   const device = detectDevice();
   const supportNotice = document.getElementById('supportNotice');
   let message = '';
   let showNotice = false;
 
-  // Check HTTPS requirement
   if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-    message = '⚠️ WARNING: Microphone access requires HTTPS. Current connection is HTTP. Please use HTTPS URL for full functionality.';
+    message = '⚠️ WARNING: Microphone access requires HTTPS. Please use HTTPS URL for full functionality.';
     showNotice = true;
   }
 
-  // Check browser support for Speech Recognition
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    message = '⚠️ WARNING: Speech Recognition not supported in this browser. Please use Chrome, Edge, or Safari.';
+    message = '⚠️ WARNING: Speech Recognition not supported. Please use Chrome, Edge, or Safari.';
     showNotice = true;
   }
 
-  // Android-specific warnings
   if (device.isAndroid && device.isFirefox) {
-    message = '⚠️ WARNING: Speech Recognition not supported on Firefox for Android. Please use Chrome for Android.';
+    message = '⚠️ WARNING: Speech Recognition not supported on Firefox for Android. Please use Chrome.';
     showNotice = true;
   }
 
   if (showNotice) {
     supportNotice.textContent = message;
     supportNotice.classList.add('show');
-    return false;
   }
 
   return true;
@@ -550,7 +533,6 @@ const level3Science = [
   "Blood circulation transports oxygen nutrients and waste products throughout body"
 ];
 
-// Homophone groups for intelligent matching
 const homophoneGroups = [
   ["to","too","two"], ["hear","here"], ["sea","see"], ["right","write"],
   ["flower","flour"], ["one","won"], ["bare","bear"], ["break","brake"],
@@ -587,6 +569,7 @@ let audioChunks = [];
 let audioBlob;
 let micAllowed = false;
 let recognitionActive = false;
+let recognitionShouldRestart = false;
 let deviceInfo = detectDevice();
 
 // ============================================
@@ -619,15 +602,12 @@ const buttons = document.getElementById('buttons');
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
-
-// Check if two words are homophones
 function areHomophones(w1, w2) {
   w1 = w1.toLowerCase();
   w2 = w2.toLowerCase();
   return homophoneGroups.some(group => group.includes(w1) && group.includes(w2));
 }
 
-// Check if spoken sentence matches expected with homophone tolerance
 function speechMatches(spoken, expected) {
   const spokenWords = spoken.toLowerCase().replace(/[.,!?]/g, '').trim().split(/\s+/);
   const expectedWords = expected.toLowerCase().replace(/[.,!?]/g, '').trim().split(/\s+/);
@@ -642,7 +622,6 @@ function speechMatches(spoken, expected) {
   return true;
 }
 
-// Get random unique sentences for a level
 function getRandomSentences(level, count) {
   const levelData = allLevels[level];
   
@@ -670,7 +649,6 @@ function getRandomSentences(level, count) {
   return sentences;
 }
 
-// Animate sentence display
 function fadeInSentence(text) {
   sentenceBox.classList.remove('active', 'hidden');
   setTimeout(() => {
@@ -688,9 +666,8 @@ function hideSentence() {
 // MEDIA RECORDER SETUP (Desktop Only)
 // ============================================
 function setupMediaRecorder() {
-  // Skip on Android - use Web Speech API only
   if (deviceInfo.isAndroid) {
-    console.log('Android device detected - skipping MediaRecorder setup');
+    console.log('Android device - skipping MediaRecorder');
     return Promise.resolve();
   }
 
@@ -708,7 +685,7 @@ function setupMediaRecorder() {
       };
     })
     .catch(err => {
-      console.warn('MediaRecorder setup skipped or failed:', err.message);
+      console.warn('MediaRecorder error:', err.message);
     });
 }
 
@@ -723,21 +700,20 @@ function initializeSpeechRecognition() {
   
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recog = new SpeechRecognition();
-  recog.lang = 'en-US';
   
-  // CRITICAL FIX FOR ANDROID: Set continuous to true
-  recog.continuous = true;
+  recog.lang = 'en-US';
+  recog.continuous = false;
   recog.interimResults = false;
   recog.maxAlternatives = 1;
 
   recog.onstart = () => {
     recognitionActive = true;
+    recognitionShouldRestart = true;
     speakBtn.textContent = '⏹️ Stop Listening';
     result.textContent = '🎤 Listening...';
     audioChunks = [];
     playbackBtn.disabled = true;
     
-    // Only start MediaRecorder on desktop
     if (mediaRecorder && mediaRecorder.state === 'inactive') {
       mediaRecorder.start();
     }
@@ -745,11 +721,8 @@ function initializeSpeechRecognition() {
 
   recog.onresult = event => {
     recognitionActive = false;
-    speakBtn.textContent = '🎤 Speak';
-
     const spoken = event.results[0][0].transcript;
 
-    // Stop media recorder if active
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
@@ -766,6 +739,7 @@ function initializeSpeechRecognition() {
       recallBtn.style.display = 'inline-block';
       retryBtn.style.display = 'none';
       speechAttemptCount = 0;
+      recognitionShouldRestart = false;
     } else {
       speechAttemptCount++;
       result.textContent = `❌ Incorrect. Try again! (Attempt ${speechAttemptCount}/5)`;
@@ -776,6 +750,7 @@ function initializeSpeechRecognition() {
       if (speechAttemptCount >= 5) {
         recallBtn.style.display = 'inline-block';
         result.textContent = '💡 Having trouble? Try arranging the words!';
+        recognitionShouldRestart = false;
       } else {
         recallBtn.style.display = 'none';
       }
@@ -790,17 +765,19 @@ function initializeSpeechRecognition() {
       mediaRecorder.stop();
     }
     
-    console.error('Speech Recognition error:', event.error);
+    console.error('Recognition error:', event.error);
     if (event.error === 'no-speech') {
       result.textContent = '⚠️ No speech detected. Try again!';
     } else if (event.error === 'not-allowed') {
-      alert('⚠️ Microphone permission denied. Please allow microphone access in browser settings.');
+      alert('⚠️ Microphone permission denied.');
       speakBtn.disabled = true;
     } else if (event.error === 'network') {
-      result.textContent = '⚠️ Network error. Please check your connection.';
+      result.textContent = '⚠️ Network error. Check your connection.';
     } else {
       result.textContent = '❌ Error: ' + event.error;
     }
+    
+    recognitionShouldRestart = false;
   };
 
   recog.onend = () => {
@@ -811,8 +788,7 @@ function initializeSpeechRecognition() {
       mediaRecorder.stop();
     }
     
-    // ANDROID FIX: Don't auto-restart, let user control it
-    console.log('Speech recognition ended');
+    console.log('Recognition ended');
   };
 
   return recog;
@@ -924,10 +900,7 @@ function checkSentenceCompletion() {
 // GAME FLOW FUNCTIONS
 // ============================================
 function startReadingPractice() {
-  // Check browser support first
-  if (!checkBrowserSupport()) {
-    console.warn('Browser support check failed');
-  }
+  checkBrowserSupport();
 
   jumbleContainer.style.display = 'none';
   correctSentenceBox.classList.remove('active');
@@ -962,7 +935,7 @@ function startReadingPractice() {
         showLevel();
       } else {
         speakBtn.disabled = true;
-        alert('⚠️ Speech Recognition not available. Please use Chrome or Edge.');
+        alert('⚠️ Speech Recognition not available.');
         showLevel();
       }
     }).catch(err => {
@@ -1044,13 +1017,14 @@ function showScorePage() {
 // ============================================
 speakBtn.onclick = () => {
   if (!micAllowed || !recognition) {
-    alert('⚠️ Speech Recognition not initialized. Please refresh the page.');
+    alert('⚠️ Speech Recognition not initialized. Refresh page.');
     return;
   }
   
   if (recognitionActive) {
-    recognition.stop();
+    recognition.abort();
     recognitionActive = false;
+    recognitionShouldRestart = false;
     speakBtn.textContent = '🎤 Speak';
     result.textContent = '';
     spokenSentenceBox.classList.remove('active');
@@ -1059,11 +1033,23 @@ speakBtn.onclick = () => {
   }
   
   try {
+    audioChunks = [];
     recognition.start();
-    playbackBtn.disabled = true;
   } catch (e) {
-    console.error('Recognition start error:', e);
-    result.textContent = '⚠️ Please wait and try again.';
+    console.error('Start error:', e.message);
+    if (e.message.includes('already started')) {
+      recognition.abort();
+      setTimeout(() => {
+        try {
+          audioChunks = [];
+          recognition.start();
+        } catch (e2) {
+          result.textContent = '⚠️ Please try again.';
+        }
+      }, 100);
+    } else {
+      result.textContent = '⚠️ Please wait and try again.';
+    }
   }
 };
 
@@ -1098,8 +1084,8 @@ playbackBtn.onclick = () => {
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
     audio.play().catch(err => {
-      console.error('Error playing audio:', err);
-      alert('⚠️ Could not play audio. Please try again.');
+      console.error('Playback error:', err);
+      alert('⚠️ Could not play audio.');
     });
   } else {
     alert('⚠️ No audio recording available.');
